@@ -1,5 +1,5 @@
 [rpc_endpoints]
-sepolia = "https://rpc.sepolia.org"
+citria = "https://rpc.testnet.citrea.xyz"
 
 [profile.default]
 src = "contract/src"

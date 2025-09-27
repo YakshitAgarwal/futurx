@@ -1,20 +1,24 @@
-const { ethers } = require("ethers");
-const axios = require("axios");
-require("dotenv").config();
+import { ethers } from "ethers";
+import axios from "axios";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 // RPC for Citrea testnet
-const provider = new ethers.JsonRpcProvider("https://rpc.testnet.citrea.xyz");
-//const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+//const provider = new ethers.JsonRpcProvider("https://rpc.testnet.citrea.xyz");
+const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
 
 
 // Your server wallet private key
 const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
 // Oracle contract address + ABI
-const oracleAddress = "0x9a425C4A33CfDf635E975D078E71C5E31b300c48";// fixed typo: ADRESS → ADDRESS
+const oracleAddress = "0x8bCe54ff8aB45CB075b044AE117b8fD91F9351aB";// fixed typo: ADRESS → ADDRESS
 const oracleABI = [
   "function updatePrices(string[] assets, uint256[] values, string password) external",
+  "function getHistoryCount(string asset) external view returns (uint256)"
 ];
+
 
 
 
@@ -29,13 +33,16 @@ async function fetchPrices() {
     "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
   );
 
-  const xau = await axios.get("https://www.goldapi.io/api/XAU/USD", {
-    headers: { "x-access-token": process.env.GOLD_API_KEY },
-  });
+  const xauResp = await axios.get(
+  `https://api.metalpriceapi.com/v1/latest?api_key=${process.env.GOLD_API_KEY}&base=XAU&currencies=USD`
+);
+
+const xau = xauResp.data.rates?.USD;
+
 
   return {
     BTC: btc.data.bitcoin.usd,
-    XAU: xau.data.price,
+    XAU: xau,
   };
 }
 
@@ -45,15 +52,21 @@ async function updateOracle() {
     const prices = await fetchPrices();
     console.log("Fetched:", prices);
 
-    // Build arrays for batch update
+    // Round to 8 decimals max before parsing
+    //
     const assets = Object.keys(prices);
-    const values = Object.values(prices).map(p =>
-      ethers.parseUnits(p.toString(), 8)
+    const values = Object.values(prices).map(
+      p => ethers.parseUnits((p ?? 3600).toFixed(8), 8)
     );
 
-    // Send single tx for all prices
+
     const tx = await oracle.updatePrices(assets, values, PASSWORD);
     await tx.wait();
+
+    for (const a of assets) {
+      const count = await oracle.getHistoryCount(a);
+      console.log(`History count for ${a}:`, count.toString());
+    }
 
     console.log("✅ Batch updated prices:", prices);
   } catch (err) {

@@ -70,17 +70,17 @@ contract FuturesContract {
         Asset _asset,
         Side _side,
         uint256 _expiryTime,
-        uint256 _fraction;
+        uint256 _fraction,
+        uint256 _margin
     ) external payable {
         require(_expiryTime > block.timestamp, "Expiry must be in future");
-        require(_quantity > 0, "Quantity must be > 0");
+        require(_fraction > 0, "Quantity must be > 0");
 
         uint256 oraclePrice = oracle.getPrice(_assetKey(_asset));
         require(oraclePrice > 0, "Oracle price not set");
 
-        uint256 notional = oraclePrice * _quantity / 1e18; // adjust for decimals
-        uint256 requiredMargin = (notional * 10) / 100;
-        require(msg.value == requiredMargin, "Must deposit 10% margin");
+        uint256 notional = oraclePrice * _fraction / 1e18; // adjust for decimals
+        require(msg.value == _margin, "Margin must equal declared value");
 
 
         positions[positionCount] = Position({
@@ -88,10 +88,10 @@ contract FuturesContract {
             buyer: address(0),
             asset: _asset,
             side: _side,
-            priceBefore: _priceBefore * _fraction,
+            priceBefore: oraclePrice,
             expiryTime: _expiryTime,
             status: Status.OPEN,
-            margin: requiredMargin,
+            margin: _margin,
             quantity : _fraction
         });
 
@@ -100,10 +100,10 @@ contract FuturesContract {
             msg.sender,
             _asset,
             _side,
-            _priceBefore * _fraction,
+            oraclePrice,
             _expiryTime,
             _fraction,
-            requiredMargin
+            _margin
         );
         positionCount++;
     }
@@ -122,6 +122,32 @@ contract FuturesContract {
         emit PositionMatched(_positionId, msg.sender, msg.value);
     }
 
+    function getPosition(uint256 id) external view returns (
+    address seller,
+    address buyer,
+    Asset asset,
+    Side side,
+    uint256 priceBefore,
+    uint256 expiryTime,
+    Status status,
+    uint256 margin,
+    uint256 quantity
+) {
+    Position storage p = positions[id];
+    return (
+        p.seller, p.buyer, p.asset, p.side,
+        p.priceBefore, p.expiryTime, p.status, p.margin, p.quantity
+    );
+}
+
+function getStatus(uint256 id) external view returns (Status) {
+    return positions[id].status;
+}
+
+function getBuyer(uint256 id) external view returns (address) {
+    return positions[id].buyer;
+}
+
     /// @notice Simplified settlement logic (to be replaced with oracle price check)
     // apply fraction to priceAtExpiry before sending as parameter!! 
     function settle(uint256 _positionId) external {
@@ -136,7 +162,7 @@ contract FuturesContract {
         int256 pnlBuyer;
 
         // Price difference scaled by quantity
-        int256 diff = (int256(expiryPrice) - int256(pos.entryPrice))
+        int256 diff = (int256(expiryPrice) - int256(pos.priceBefore))
                         * int256(pos.quantity) / 1e18;
 
         if (pos.side == Side.LONG) {
@@ -161,6 +187,6 @@ contract FuturesContract {
         if (buyerFinal > 0) payable(pos.buyer).transfer(uint256(buyerFinal));
 
         pos.status = Status.SETTLED;
-        emit PositionSettled(_id, pnlSeller, pnlBuyer);
+        emit PositionSettled(_positionId, pnlSeller, pnlBuyer);
     }
 }
