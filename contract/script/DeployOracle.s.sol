@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
-import "../src/mocks/MockOracle.sol";
+import "../src/Oracle.sol";
 
 contract DeployOracle is Script {
     function run() external {
-        uint256 pk = vm.envUint("PRIVATE_KEY");
-        vm.startBroadcast(pk);
+        // load private key from env
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
-        // Start gold at 2000 USD (8 decimals)
-        MockOracle gold = new MockOracle(int256(2000 * 1e8), 8);
+        // start broadcast
+        vm.startBroadcast(deployerPrivateKey);
+
+        // deploy with password arg
+        new PasswordOracle("Future");
 
         vm.stopBroadcast();
-
-        console2.log("Gold Oracle deployed at:", address(gold));
     }
 }
