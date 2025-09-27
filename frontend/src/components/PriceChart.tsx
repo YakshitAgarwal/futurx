@@ -1,22 +1,14 @@
 import { useState } from "react";
-import { ArrowUpRight, ArrowDownRight, Activity } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight } from "lucide-react";
+import GoldChart from "./GoldChart";
+import BitcoinChart from "./BitcoinChart";
 
-const PriceChart = () => {
-  const [selectedMarket, setSelectedMarket] = useState("GOLD-USDC");
-  const [marketData, setMarketData] = useState({
-    "GOLD-USDC": {
-      price: 1950.25,
-      change: 12.45,
-      changePercent: 0.64,
-      volume: "2.4M",
-    },
-    "BTC-USDC": {
-      price: 43250.8,
-      change: -890.2,
-      changePercent: -2.02,
-      volume: "12.8M",
-    },
-  });
+const PriceChart = ({
+  selectedMarket,
+  setSelectedMarket,
+  marketData,
+  setMarketData,
+}) => {
   const currentMarketData = marketData[selectedMarket];
   return (
     <div>
@@ -26,7 +18,7 @@ const PriceChart = () => {
             <h2 className="text-2xl font-bold text-white">{selectedMarket}</h2>
             <div className="flex items-center gap-2">
               <span className="text-2xl font-bold text-white">
-                ${currentMarketData.price.toLocaleString()}
+                ${currentMarketData.price}
               </span>
               <div
                 className={`flex items-center gap-1 px-2 py-1 rounded ${
@@ -56,17 +48,9 @@ const PriceChart = () => {
             <span className="text-sm text-slate-400">Live</span>
           </div>
         </div>
-
-        {/* Mock Chart Area */}
-        <div className="h-64 bg-slate-900/50 rounded-lg flex items-center justify-center border border-slate-700">
-          <div className="text-center">
-            <Activity className="w-12 h-12 text-amber-400 mx-auto mb-2" />
-            <p className="text-slate-400">Price Chart</p>
-            <p className="text-xs text-slate-500">
-              Real-time price data from Chainlink oracles
-            </p>
-          </div>
-        </div>
+        {/* <div>
+          {selectedMarket == "GOLD-USDC" ? <GoldChart /> : <BitcoinChart />}
+        </div> */}
       </div>
     </div>
   );

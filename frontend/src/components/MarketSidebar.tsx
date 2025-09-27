@@ -1,23 +1,12 @@
 import { useState } from "react";
 import { BarChart3, Activity } from "lucide-react";
 
-const MarketSidebar = () => {
-  const [selectedMarket, setSelectedMarket] = useState("GOLD-USDC");
-
-  const [marketData, setMarketData] = useState({
-    "GOLD-USDC": {
-      price: 1950.25,
-      change: 12.45,
-      changePercent: 0.64,
-      volume: "2.4M",
-    },
-    "BTC-USDC": {
-      price: 43250.8,
-      change: -890.2,
-      changePercent: -2.02,
-      volume: "12.8M",
-    },
-  });
+const MarketSidebar = ({
+  selectedMarket,
+  setSelectedMarket,
+  marketData,
+  setMarketData,
+}) => {
   return (
     <div>
       <div className="lg:col-span-1">
@@ -61,7 +50,7 @@ const MarketSidebar = () => {
                 </div>
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-slate-200 text-base font-semibold">
-                    ${data.price.toLocaleString()}
+                    ${data.price}
                   </span>
                   <span className="text-xs text-slate-400">
                     Vol: {data.volume}
