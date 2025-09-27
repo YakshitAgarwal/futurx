@@ -13,10 +13,10 @@ const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
 const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
 // Oracle contract address + ABI
-const oracleAddress = "0x8bCe54ff8aB45CB075b044AE117b8fD91F9351aB";// fixed typo: ADRESS → ADDRESS
+const oracleAddress = "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853";// fixed typo: ADRESS → ADDRESS
 const oracleABI = [
   "function updatePrices(string[] assets, uint256[] values, string password) external",
-  "function getHistoryCount(string asset) external view returns (uint256)"
+  "function getHistoryCount(string asset) external view returns (uint8)"
 ];
 
 
@@ -37,7 +37,7 @@ async function fetchPrices() {
   `https://api.metalpriceapi.com/v1/latest?api_key=${process.env.GOLD_API_KEY}&base=XAU&currencies=USD`
 );
 
-const xau = xauResp.data.rates?.USD;
+const xau = xauResp.data.rates?.USD ?? 3600;
 
 
   return {

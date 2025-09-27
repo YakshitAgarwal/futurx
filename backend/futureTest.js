@@ -12,11 +12,11 @@ const seller = new NonceManager(new ethers.Wallet(
 const buyer  = new NonceManager(new ethers.Wallet(
   "0xdbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97", provider));
 
-const ORACLE_ADDR  = "0x8bCe54ff8aB45CB075b044AE117b8fD91F9351aB";
-const FUTURES_ADDR = "0xAD523115cd35a8d4E60B3C0953E0E0ac10418309";
+const ORACLE_ADDR  = "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853";
+const FUTURES_ADDR = "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82";
 
 const FUTURES_ABI = [
-  "function createPosition(uint8 asset, uint8 side, uint256 expiryTime, uint256 fraction, uint256 margin) payable",
+  "function createPosition(uint8 asset,uint8 side,uint256 expiryTime,uint256 fraction,uint256 margin) payable",
   "function matchPosition(uint256 positionId) payable",
   "function settle(uint256 positionId)",
   "function getPosition(uint256 id) view returns (address,address,uint8,uint8,uint256,uint256,uint8,uint256,uint256)",
@@ -25,10 +25,43 @@ const FUTURES_ABI = [
 
 
 const ORACLE_ABI = [
-  "function getPrice(string asset) view returns (uint256)",
-  "function getHistory(string asset, uint256 n) view returns (uint256[] prices, uint256[] timestamps)"
+  "function updatePrices(string[] assets, uint256[] values, string password) external",
+  "function updatePrice(string asset, uint256 value, string password) external",
+
+  "function getPrice(string asset) external view returns (uint256)",
+  "function getPriceWithTimestamp(string asset) external view returns (uint256,uint256)",
+  "function getHistoryCount(string asset) external view returns (uint8)",
+  "function getLatestFromHistory(string asset) external view returns (uint256,uint256)",
+  "function getHistoryAt(string asset,uint8 iBack) external view returns (uint256,uint256)",
+  "function getHistory(string asset) external view returns (tuple(uint256 price,uint256 timestamp)[] memory)",
+
+  "function WINDOW() external view returns (uint8)"
 ];
 
+// 1. Prove this address has code
+const futCode = await provider.getCode(FUTURES_ADDR);
+console.log("futures bytecode length:", futCode.length);
+if (futCode === "0x") throw new Error("No contract at FUTURES_ADDR");
+
+// 2. Prove the ABI matches the contract by calling a VIEW you know exists
+const future = new ethers.Contract(FUTURES_ADDR, FUTURES_ABI, provider);
+try {
+  const pc = await future.positionCount();
+  console.log("positionCount()", pc.toString());
+} catch (e) {
+  console.error("positionCount() failed -> ABI/addr mismatch", e);
+  throw e;
+}
+
+
+
+
+
+const code = await provider.getCode(ORACLE_ADDR);
+console.log("oracle bytecode length:", code.length);
+if (code === "0x") {
+  throw new Error("No contract at ORACLE_ADDR on this RPC. Redeploy and update the address.");
+}
 // ---------- EWMA / Margin Helpers ----------
 
 // Convert array of bigint prices with 8 decimals -> JS numbers
@@ -101,7 +134,7 @@ function marginFromVol(notional, vol, opts = {}) {
 }
 
 async function fetchHistoryUSD(asset, nPoints = 60) {
-  const [prices] = await oracle.getHistory(asset, nPoints);
+  const [prices] = await oracle.getHistory(asset);
   return bnPricesToNumbers(prices);
 }
 
@@ -173,15 +206,22 @@ async function main() {
   }
 
 
-    const tx1 = await futures.connect(seller).createPosition(
-    1,          
-    0,          
-    expiry,     
-    fraction,   
-    margin,     
-    { value: margin } 
-  );
+console.log("oracle BTC price:", (await oracle.getPrice("BTC")).toString());
 
+console.log("expiry:", expiry, "fraction:", fraction.toString(), "margin:", margin.toString());
+
+    const tx1 = await futures.connect(seller).createPosition(
+  1,
+  0,
+  expiry,
+  fraction,
+  margin,
+  { value: margin, gasLimit: 5_000_000n }
+);
+await tx1.wait();
+
+
+  console.log('a');
 
   const id = (await futures.positionCount()) - 1n;
 

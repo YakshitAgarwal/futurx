@@ -73,13 +73,13 @@ contract FuturesContract {
         uint256 _fraction,
         uint256 _margin
     ) external payable {
-        require(_expiryTime > block.timestamp, "Expiry must be in future");
-        require(_fraction > 0, "Quantity must be > 0");
+        require(_expiryTime > block.timestamp, "bad expiry");
+require(_fraction > 0, "fraction = 0");
+
 
         uint256 oraclePrice = oracle.getPrice(_assetKey(_asset));
         require(oraclePrice > 0, "Oracle price not set");
 
-        uint256 notional = oraclePrice * _fraction / 1e18; // adjust for decimals
         require(msg.value == _margin, "Margin must equal declared value");
 
 
