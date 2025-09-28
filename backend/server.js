@@ -13,7 +13,7 @@ const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
 const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
 // Oracle contract address + ABI
-const oracleAddress = "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853";// fixed typo: ADRESS → ADDRESS
+const oracleAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";// fixed typo: ADRESS → ADDRESS
 const oracleABI = [
   "function updatePrices(string[] assets, uint256[] values, string password) external",
   "function getHistoryCount(string asset) external view returns (uint8)"

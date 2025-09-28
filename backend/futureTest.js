@@ -12,8 +12,8 @@ const seller = new NonceManager(new ethers.Wallet(
 const buyer  = new NonceManager(new ethers.Wallet(
   "0xdbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97", provider));
 
-const ORACLE_ADDR  = "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853";
-const FUTURES_ADDR = "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82";
+const ORACLE_ADDR  = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+const FUTURES_ADDR = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
 
 const FUTURES_ABI = [
   "function createPosition(uint8 asset,uint8 side,uint256 expiryTime,uint256 fraction,uint256 margin) payable",
@@ -38,23 +38,33 @@ const ORACLE_ABI = [
   "function WINDOW() external view returns (uint8)"
 ];
 
-// 1. Prove this address has code
-const futCode = await provider.getCode(FUTURES_ADDR);
-console.log("futures bytecode length:", futCode.length);
-if (futCode === "0x") throw new Error("No contract at FUTURES_ADDR");
+const deployer = new ethers.Wallet(
+  "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+  provider
+);
+
+// use deployer to write to the oracle
+const oracleWriter = new ethers.Contract(ORACLE_ADDR, ORACLE_ABI, deployer);
+
+
 
 // 2. Prove the ABI matches the contract by calling a VIEW you know exists
 const future = new ethers.Contract(FUTURES_ADDR, FUTURES_ABI, provider);
-try {
-  const pc = await future.positionCount();
-  console.log("positionCount()", pc.toString());
-} catch (e) {
-  console.error("positionCount() failed -> ABI/addr mismatch", e);
-  throw e;
-}
+ 
 
 
 // ---------- EWMA / Margin Helpers ----------
+
+// helper: move chain time to >= target and mine a block
+async function fastForwardTo(ts) {
+  const now = (await provider.getBlock("latest")).timestamp;
+  const delta = Math.max(0, ts - now + 1); // +1s to be safely past
+  if (delta > 0) {
+    await provider.send("evm_increaseTime", [delta]);
+  }
+  await provider.send("evm_mine", []);
+}
+
 
 // Convert array of bigint prices with 8 decimals -> JS numbers
 function bnPricesToNumbers(pricesBN) {
@@ -146,7 +156,7 @@ async function main() {
   const buyerAddr  = await buyer.getAddress();
 
   // 1) Params
-  const expiry   = Math.floor(Date.now() / 1000) + 60;      // +1 minute
+  const expiry   = Math.floor(Date.now() / 1000) + 15;      // +1 minute
   const fraction = ethers.parseUnits("0.01", 18);           // 0.01 BTC
   const entry    = await oracle.getPrice("BTC");            // uint256, 8 decimals per your oracle
   const notional = (entry * fraction) / 10n**18n;
@@ -188,14 +198,25 @@ async function main() {
     }
   } catch (e) {
     // If oracle history call fails, fallback to fixed margin (10%)
-    const fallbackBps = 1000n;
-    margin = (notional * 0.1) / 10000n;
+    const fallbackBps = 1000n; // 10%
+    margin = (notional * fallbackBps) / 10000n;
+
     marginBpsUsed = fallbackBps;
     console.log(
       `⚠️ History fetch failed; using fallback margin = ${fallbackBps} bps`,
       e?.message ?? e
     );
   }
+
+
+const btcPrice = ethers.parseUnits("27000", 8);
+
+// ⚠️ replace "CORRECT_PASSWORD" with the one your Oracle expects
+const tx = await oracleWriter.updatePrice("BTC", btcPrice, "Future");
+await tx.wait();
+console.log("✅ Oracle seeded");
+
+
 
 
 console.log("oracle BTC price:", (await oracle.getPrice("BTC")).toString());
@@ -208,7 +229,7 @@ console.log("expiry:", expiry, "fraction:", fraction.toString(), "margin:", marg
   expiry,
   fraction,
   margin,
-  { value: margin, gasLimit: 5_000_000n }
+  { value: margin }
 );
 await tx1.wait();
 
@@ -232,9 +253,8 @@ await tx1.wait();
   const balSB = await provider.getBalance(sellerAddr);
   const balBB = await provider.getBalance(buyerAddr);
 
-  const waitMs = (expiry - Math.floor(Date.now() / 1000) + 1) * 1000;
-  console.log(`\n⏳ Waiting ${waitMs / 1000}s for expiry...`);
-  await sleep(waitMs);
+  // 🔧 move chain time past expiry (no wall-clock waiting)
+await fastForwardTo(expiry);
 
   const tx3 = await futures.connect(seller).settle(id);
   await tx3.wait();
