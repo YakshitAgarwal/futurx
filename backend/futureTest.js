@@ -54,14 +54,6 @@ try {
 }
 
 
-
-
-
-const code = await provider.getCode(ORACLE_ADDR);
-console.log("oracle bytecode length:", code.length);
-if (code === "0x") {
-  throw new Error("No contract at ORACLE_ADDR on this RPC. Redeploy and update the address.");
-}
 // ---------- EWMA / Margin Helpers ----------
 
 // Convert array of bigint prices with 8 decimals -> JS numbers
@@ -197,7 +189,7 @@ async function main() {
   } catch (e) {
     // If oracle history call fails, fallback to fixed margin (10%)
     const fallbackBps = 1000n;
-    margin = (notional * fallbackBps) / 10000n;
+    margin = (notional * 0.1) / 10000n;
     marginBpsUsed = fallbackBps;
     console.log(
       `⚠️ History fetch failed; using fallback margin = ${fallbackBps} bps`,
@@ -221,7 +213,6 @@ console.log("expiry:", expiry, "fraction:", fraction.toString(), "margin:", marg
 await tx1.wait();
 
 
-  console.log('a');
 
   const id = (await futures.positionCount()) - 1n;
 

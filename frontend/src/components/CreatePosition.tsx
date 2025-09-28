@@ -1,5 +1,14 @@
 import { useState } from "react";
 import { TrendingDown, TrendingUp, Zap, DollarSign } from "lucide-react";
+import { ethers } from "ethers";
+import { BrowserProvider } from "ethers";
+// https://rpc.testnet.citrea.xyz
+
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
 
 const CreatePosition = () => {
   const [selectedMarket, setSelectedMarket] = useState("GOLD-USDC");
@@ -23,16 +32,711 @@ const CreatePosition = () => {
   });
 
   const currentMarketData = marketData[selectedMarket];
+      const ORACLE_ADDR = "0x955669F8BccdAEEb6DFA1E2b2a08172fA27114fe";
+    const FUTURES_ADDR = "0x68a2b20Fc8DBF3e24593Dfb8Cce571E8cB5DeACF";
+    const FUTURE_ABI = [
+	{
+		"inputs": [
+			{
+				"internalType": "enum FuturesContract.Asset",
+				"name": "_asset",
+				"type": "uint8"
+			},
+			{
+				"internalType": "enum FuturesContract.Side",
+				"name": "_side",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_expiryTime",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_fraction",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_margin",
+				"type": "uint256"
+			}
+		],
+		"name": "createPosition",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_positionId",
+				"type": "uint256"
+			}
+		],
+		"name": "matchPosition",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "oracleAddr",
+				"type": "address"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "positionId",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "seller",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "enum FuturesContract.Asset",
+				"name": "asset",
+				"type": "uint8"
+			},
+			{
+				"indexed": false,
+				"internalType": "enum FuturesContract.Side",
+				"name": "side",
+				"type": "uint8"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "price",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "expiryTime",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "quantity",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "margin",
+				"type": "uint256"
+			}
+		],
+		"name": "PositionCreated",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "positionId",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "buyer",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "margin",
+				"type": "uint256"
+			}
+		],
+		"name": "PositionMatched",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "id",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "int256",
+				"name": "pnlSeller",
+				"type": "int256"
+			},
+			{
+				"indexed": false,
+				"internalType": "int256",
+				"name": "pnlBuyer",
+				"type": "int256"
+			}
+		],
+		"name": "PositionSettled",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_positionId",
+				"type": "uint256"
+			}
+		],
+		"name": "settle",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "id",
+				"type": "uint256"
+			}
+		],
+		"name": "getBuyer",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "id",
+				"type": "uint256"
+			}
+		],
+		"name": "getPosition",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "seller",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "buyer",
+				"type": "address"
+			},
+			{
+				"internalType": "enum FuturesContract.Asset",
+				"name": "asset",
+				"type": "uint8"
+			},
+			{
+				"internalType": "enum FuturesContract.Side",
+				"name": "side",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint256",
+				"name": "priceBefore",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "expiryTime",
+				"type": "uint256"
+			},
+			{
+				"internalType": "enum FuturesContract.Status",
+				"name": "status",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint256",
+				"name": "margin",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "quantity",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "id",
+				"type": "uint256"
+			}
+		],
+		"name": "getStatus",
+		"outputs": [
+			{
+				"internalType": "enum FuturesContract.Status",
+				"name": "",
+				"type": "uint8"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "oracle",
+		"outputs": [
+			{
+				"internalType": "contract PasswordOracle",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "owner",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "positionCount",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "positions",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "seller",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "buyer",
+				"type": "address"
+			},
+			{
+				"internalType": "enum FuturesContract.Asset",
+				"name": "asset",
+				"type": "uint8"
+			},
+			{
+				"internalType": "enum FuturesContract.Side",
+				"name": "side",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint256",
+				"name": "priceBefore",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "expiryTime",
+				"type": "uint256"
+			},
+			{
+				"internalType": "enum FuturesContract.Status",
+				"name": "status",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint256",
+				"name": "margin",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "quantity",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+];
+    const ORACLE_ABI = [
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_password",
+				"type": "string"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "string",
+				"name": "asset",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "price",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			}
+		],
+		"name": "PriceUpdated",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "asset",
+				"type": "string"
+			},
+			{
+				"internalType": "uint256",
+				"name": "value",
+				"type": "uint256"
+			},
+			{
+				"internalType": "string",
+				"name": "password",
+				"type": "string"
+			}
+		],
+		"name": "updatePrice",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string[]",
+				"name": "assets",
+				"type": "string[]"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "values",
+				"type": "uint256[]"
+			},
+			{
+				"internalType": "string",
+				"name": "password",
+				"type": "string"
+			}
+		],
+		"name": "updatePrices",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "asset",
+				"type": "string"
+			}
+		],
+		"name": "getHistory",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "uint256",
+						"name": "price",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "timestamp",
+						"type": "uint256"
+					}
+				],
+				"internalType": "struct PasswordOracle.PriceData[]",
+				"name": "out",
+				"type": "tuple[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "asset",
+				"type": "string"
+			},
+			{
+				"internalType": "uint8",
+				"name": "iBack",
+				"type": "uint8"
+			}
+		],
+		"name": "getHistoryAt",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "price",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "asset",
+				"type": "string"
+			}
+		],
+		"name": "getHistoryCount",
+		"outputs": [
+			{
+				"internalType": "uint8",
+				"name": "",
+				"type": "uint8"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "asset",
+				"type": "string"
+			}
+		],
+		"name": "getLatestFromHistory",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "price",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "asset",
+				"type": "string"
+			}
+		],
+		"name": "getPrice",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "asset",
+				"type": "string"
+			}
+		],
+		"name": "getPriceWithTimestamp",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "passwordHash",
+		"outputs": [
+			{
+				"internalType": "bytes32",
+				"name": "",
+				"type": "bytes32"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "WINDOW",
+		"outputs": [
+			{
+				"internalType": "uint8",
+				"name": "",
+				"type": "uint8"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+];
 
-  const handleCreatePosition = () => {
-    // This would integrate with smart contracts
-    console.log("Creating position:", {
-      market: selectedMarket,
-      position: selectedPosition,
-      collateral: collateralAmount,
-      duration,
+
+
+const handleCreatePosition = async (
+  selectedMarket: string,
+  selectedPosition: string,
+  duration: string,
+  collateralAmount: string,
+  FUTURE_ABI: any[]
+) => {
+  try {
+    if (!window.ethereum) {
+      alert("No wallet detected. Please install MetaMask.");
+      return;
+    }
+
+    // 1. Provider & Signer
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = await provider.getSigner();
+
+    // 2. Contract
+    const futures = new ethers.Contract(FUTURES_ADDR, FUTURE_ABI, signer);
+
+    // 3. Params
+    const asset: number = selectedMarket === "BTC-USDC" ? 1 : 0; // Mapping nach deinem Contract-Enum
+    const side: number = selectedPosition === "long" ? 0 : 1;   // 0 = Long, 1 = Short
+    const now: number = Math.floor(Date.now() / 1000);
+    let expiry: number;
+
+    switch (duration) {
+      case "1m":
+        expiry = now + 60;
+        break;
+      case "1h":
+        expiry = now + 3600;
+        break;
+      default:
+        expiry = now + 86400; // 1 Tag
+    }
+
+    // Fraction (Menge) – hier als Dummy 1 Token
+    const fraction = ethers.utils.parseUnits("1", 18);
+
+    // Margin aus dem CollateralAmount
+    const margin = ethers.utils.parseUnits(collateralAmount, 18);
+
+    console.log("Creating position with:", {
+      asset,
+      side,
+      expiry,
+      fraction: fraction.toString(),
+      margin: margin.toString(),
     });
-  };
+
+    // 4. Contract Call
+    const tx = await futures.createPosition(
+      asset,
+      side,
+      expiry,
+      fraction,
+      margin,
+      { value: margin }
+    );
+
+    console.log("⏳ Transaction sent:", tx.hash);
+    const receipt = await tx.wait();
+    console.log("✅ Position created:", receipt);
+    alert(`Position created! TX: ${tx.hash}`);
+  } catch (err: any) {
+    console.error("❌ Error creating position:", err);
+    alert("Error: " + (err.message || err));
+  }
+};
+
+
   return (
     <div>
       {/* Create Position */}
